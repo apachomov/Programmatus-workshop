@@ -336,7 +336,7 @@ kubectl describe pod ubuntu-pod
 kubectl delete pod ubuntu-pod 
 kubectl run ubuntu-pod --image ubuntu -- sleep 3600
 kubectl get pods --watch
-ubectl exec -it ubuntu-pod -- ps afux
+kubectl exec -it ubuntu-pod -- ps afux
 ```
 
 
