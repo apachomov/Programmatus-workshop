@@ -161,7 +161,7 @@ vi pod.yaml
 3. Create `Pods` and verify their information.
 ```bash
 kubectl apply -f pod.yaml 
-kubectl get pods -o wide --show-labels
+kubectl get pods -o wide --show-labels --watch
 ```
 4. Deploy a `Service`.
 ```bash
@@ -200,7 +200,7 @@ kubectl delete pod <pod_name>
 ```
 
 ### Adjusting a Deployment
-Edit the deployment configuration - first try to change image and replicas, then only replicas
+Edit the deployment configuration - first try to increase replica count, then increase replica counts and change image.
 ```bash
 vi deployment.yaml 
 ```
@@ -229,7 +229,7 @@ Readiness probes - Sometimes, applications are temporarily unable to serve traff
 Study [examples](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/).
 
 ## KUBERNETES DASHBOARD
-Install [kubernetes-dashboard](https://github.com/kubernetes/dashboard) via [helm]((https://artifacthub.io/packages/helm/k8s-dashboard/kubernetes-dashboard)). 
+Install [kubernetes-dashboard](https://github.com/kubernetes/dashboard) via [helm](https://artifacthub.io/packages/helm/k8s-dashboard/kubernetes-dashboard). 
 ```bash
 helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
 helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --create-namespace --namespace kubernetes-dashboard
