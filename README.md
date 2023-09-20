@@ -5,35 +5,40 @@ Explore [Kubernetes basic architecture](https://kubernetes.io/docs/concepts/over
 ## KUBERNETES INSTALLATION 
 General boostrap information is available [here](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/). There are more then one way to install `Kubernetes`, in this workshop we will use `kubeadm` method.
 1. Prepare your hosts with supported and up to date OS, and perform few more steps
+Set SELinux in permissive mode (effectively disabling it)
 ```bash
-# Set SELinux in permissive mode (effectively disabling it)
 sudo setenforce 0
 sudo sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
-
-# Install helping packages
+```
+Install helping packages
+```bash
 yum install -y wget yum-utils tar
+```
 
-# CONTROL PLANE ONLY
-# Later on, we will use helm package manager to install software into Kubernetes cluster
-# You can read more about helm, here: https://helm.sh/docs/intro/install/
+In the control plane, we will utilize the [Helm package manager](https://helm.sh/docs/intro/install/) for installing software into the Kubernetes cluster later on.
+```bash
 wget https://get.helm.sh/helm-v3.12.3-linux-amd64.tar.gz
 tar -zxvf helm-v3.12.3-linux-amd64.tar.gz
 mv linux-amd64/helm /usr/local/bin/helm
-
+```
 # Disable firewall 
+```bash
 systemctl disable --now firewalld.service
-# Or configure it - these are default opening examples, there might be more required based on choosen CNI and other services.
+
+# Or configure it - Configuration requirements may vary based on your choice of CNI and other services. These are the default opening examples.
 ## For Control Plane node
 firewall-cmd --add-port=6443/tcp --add-port=2379-2380/tcp --add-port=10250/tcp --add-port=10259/tcp --add-port=10257/tcp --add-port=30000-32767/tcp --permanent
 firewall-cmd --reload
 ## For Worker node:
 firewall-cmd --add-port=10250/tcp --add-port=30000-32767/tcp --permanent
 firewall-cmd --reload
-
-# Add Docker packages repo
+```
+Add Docker packages repo
+```bash
 yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-
-# Add Kubernetes packages repo
+```
+Add Kubernetes packages repo
+```bash
 cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
 [kubernetes]
 name=Kubernetes
@@ -43,15 +48,13 @@ gpgcheck=1
 gpgkey=https://pkgs.k8s.io/core:/stable:/v1.28/rpm/repodata/repomd.xml.key
 exclude=kubelet kubeadm kubectl cri-tools kubernetes-cni
 EOF
-
 ```
-2. Install [Container Runtime Inteface](https://kubernetes.io/docs/setup/production-environment/container-runtimes/). In our demo we are using Docker
+2. Install the [Container Runtime Interface](https://kubernetes.io/docs/setup/production-environment/container-runtimes/). We are using Docker in our workshop.
 ```bash
-# Install Docker
 yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 systemctl enable --now docker
 ```
-Because docker does not have default CRI, additional [installation steps](https://github.com/Mirantis/cri-dockerd) are required to install `cri-dockerd`.
+Additional [installation steps](https://github.com/Mirantis/cri-dockerd) are required to install `cri-dockerd` because Docker does not have a default CRI.
 ```bash
 wget https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.4/cri-dockerd-0.3.4-3.el8.x86_64.rpm
 yum localinstall -y cri-dockerd-0.3.4-3.el8.x86_64.rpm 
@@ -64,44 +67,37 @@ yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
 systemctl enable --now kubelet
 ```
 4. [Initialize cluster](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/)
+Bootstrap a cluster and make note of the `join` command, which will be prompted at the end of a successful installation, resembling this: `kubeadm join --token <token> <control-plane-host>:<control-plane-port> --discovery-token-ca-cert-hash sha256:<hash>`
 ```bash
-# Bootstrap a cluster
 kubeadm init --cri-socket unix:///var/run/cri-dockerd.sock --pod-network-cidr=10.244.0.0/16
-
-# Set up kubectl access to api
+```
+Set up `kubectl` access to the API and include a few additional tuning steps for enhanced kubectl ease of use.
+```bash
 mkdir -p $HOME/.kube
 cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 chown $(id -u):$(id -g) $HOME/.kube/config
-
-# Few tuning steps for kubectl ease of use
 echo "source <(kubectl completion bash)" >> ~/.bashrc
 echo 'alias k=kubectl' >> ~/.bashrc
 echo 'complete -o default -F __start_kubectl k' >> ~/.bashrc
 source ~/.bashrc
-
-# Note down join command, should look similar to this:
-# kubeadm join --token <token> <control-plane-host>:<control-plane-port> --discovery-token-ca-cert-hash sha256:<hash>
 ```
 
-5. Join worker node - you can repeat this as much times as you want any time later
+5. Join a worker node. You can repeat this process on as many nodes as needed at any time.
 ```bash
-# SSH to your worker node
 ssh root@pws-wn
-
 # Repeat steps 1-3
-
-# Join worker node to the cluster
 kubeadm join 192.168.62.56:6443 --token p2olf3.3j6q9bbx78agugod --discovery-token-ca-cert-hash sha256:8e83af9e1ddf1ab160a1de7f73fd027ff4c7050662538dc96a4a7c50901cfdfa --cri-socket unix:///var/run/cri-dockerd.sock
 ```
 
-6. Install [Container Network Interface](https://kubernetes.io/docs/concepts/cluster-administration/addons/#networking-and-network-policy)
+6. Install [Container Network Interface](https://kubernetes.io/docs/concepts/cluster-administration/addons/#networking-and-network-policy). In our workshop, we are using `flannel`. 
+Install the `flannel` plugins on both the Control Plane node and Worker nodes.
 ```bash
-# Install flannerl plugins (On both - Control Plane node and Worker node)
 mkdir -p /opt/cni/bin
 curl -O -L https://github.com/containernetworking/plugins/releases/download/v1.2.0/cni-plugins-linux-amd64-v1.2.0.tgz
 tar -C /opt/cni/bin -xzf cni-plugins-linux-amd64-v1.2.0.tgz
-
-# In this workshop we will use flannel
+```
+Install CNI 
+```bash
 kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
 ```
 
@@ -152,21 +148,26 @@ In Kubernetes, a `Service` is a method for exposing a network application that i
 * NodePort: Exposes a service on a specific port on nodes, enabling access via `<NodeIP>:<SpecifiedPort>`. Often used for testing but not for production use.
 
 ### Example: Creating Service
-1. First, deploy two pods, check their running status, view labels, and IP addresses:
+1. First, prepare to deploy two `pods`.
 ```bash
 kubectl run svc-exmpl-pod01 --image nginx --dry-run=client -o yaml > pod.yaml
 echo "---" >> pod.yaml
 kubectl run svc-exmpl-pod02 --image nginx --dry-run=client -o yaml >> pod.yaml
-# Make their label same
+```
+2. Modify the metadata of `pods` to have the same label, such as `example-service-01`.
+```bash
 vi pod.yaml
+```
+3. Create `pods` and verify their information.
+```bash
 kubectl apply -f pod.yaml 
 kubectl get pods -o wide --show-labels
 ```
-2. Deploy a service:
+4. Deploy a `service`.
 ```bash
 kubectl expose --help
 kubectl expose --port=80 --target-port=80 --name=example-service-01 pod svc-exmpl-pod01 --dry-run=client -o yaml > service.yaml
-vi service.yaml
+cat service.yaml
 kubectl apply -f service.yaml
 
 kubectl get svc
@@ -177,7 +178,7 @@ kubectl get endpoints
 kubectl describe endpoints example-service-01
 ```
 
-3. Test accessing the service via the service name:
+3. Test accessing the `service` via the `service` name.
 ```bash
 kubectl run --image nginx curler
 kubectl exec -it curler -- curl http://example-service-01
@@ -187,38 +188,28 @@ A `Deployment` is a crucial Kubernetes object that ensures declared applications
 
 ### Example: Creating a `Deployment`
 ```bash
-# Display help for creating a deployment
 kubectl create deployment --help
-
-# Generate yaml for a deployment named "app-04" using the nginx image, with 3 replicas
 kubectl create deployment app-04 --image nginx --replicas 3 --dry-run=client -o yaml > deployment.yaml
 
-# Display the content of the deployment.yaml file
-vi deployment.yaml
+cat deployment.yaml
 
-# Apply the deployment configuration from the YAML file
 kubectl apply -f deployment.yaml
-
-# Watch the status of pods being created
 kubectl get pods --watch
 
-# Try deleting pods, observe what happens
 kubectl delete pod <pod_name>
 ```
 
 ### Adjusting a Deployment
+Edit the deployment configuration - first try to change image and replicas, then only replicas
 ```bash
-# Edit the deployment configuration - first try to change image and replicas, then only replicas and observe
 vi deployment.yaml 
-
-# Apply the updated deployment configuration
+```
+Update deployment and observe
+```bash
 kubectl apply -f deployment.yaml
-
-# Watch the status of pods as they are updated
 kubectl get pods --watch
 ```
-
-### Create Service for deployment
+Create Service for deployment and check application accessabillity
 ```bash
 kubectl expose deployment app-04 --name app-04 --port 80
 kubectl exec curler -- curl http://app-04
@@ -244,8 +235,9 @@ helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
 helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --create-namespace --namespace kubernetes-dashboard
 kubectl get pods -n kubernetes-dashboard
 kubectl expose -n kubernetes-dashboard deployment kubernetes-dashboard  --name k8s-dashboard --type NodePort
-
-# Create long-lived API token that will be needed to login
+```
+Generate a long-lived API token that will be required for logging in.
+```bash
 kubectl apply -f - <<EOF
 apiVersion: v1
 kind: Secret
@@ -256,14 +248,11 @@ metadata:
     kubernetes.io/service-account.name: kubernetes-dashboard 
 type: kubernetes.io/service-account-token
 EOF
-
-# Add missing rights
+```
+Grant the missing permissions, extract the token, and then verify access to the service at https://192.168.62.57:31775/.
+```bash
 kubectl create clusterrolebinding --clusterrole admin --serviceaccount kubernetes-dashboard:kubernetes-dashboard kubernetes-dashboard-admiin-binding
-
-# Extract token
 kubectl get secrets -n kubernetes-dashboard kubernetes-dashboard-token -o jsonpath={'.data.token'} | base64 -d
-
-# Check port and access service: https://192.168.62.57:31775/
 kubectl get svc -n kubernetes-dashboard 
 ```
 
@@ -277,12 +266,13 @@ kubectl logs -f <object>
 # A cool way to gather from multiple pods
 kubectl logs -f --selector labelkey:value 
 ```
+Example of previously deployed app-04
 ```bash
-# Example of previously deployed app-04
 kubectl get pods --show-labels
 kubectl logs -f  --selector app=app-04
-
-# Open another terminal
+```
+Open another terminal for the demo, attempt to access different pages of the application, and review the logs.
+```bash
 kubectl exec curler -- curl http://app-04
 kubectl exec curler -- curl http://app-04/thispagedoesntexist
 ```
@@ -296,9 +286,9 @@ kubectl describe <pod>
 kubectl get events
 ```
 
-Here are few more examples to explore
+Here are few more examples to explore.
+Example 1
 ```bash
-### Using logs
 kubectl create deployment --image mysql mysql-deploy
 kubectl get pods --watch
 kubectl describe pod mysql-deploy-5bdb9d659-zwgzq
@@ -316,9 +306,8 @@ kubectl get pods --watch
 kubectl exec -it mysql-deploy-7886f447b9-4qkqx -- bash
 mysql -p
 ```
-
+Example 2
 ```bash
-### Using describe
 kubectl run ubuntu-pod --image ubuntnu
 kubectl get pods --watch
 kubectl describe pod ubuntu-pod
@@ -340,7 +329,7 @@ kubectl exec -it ubuntu-pod -- ps afux
 ```
 
 
-Sometimes, it's going to be performance base situations, for quick overview [metrics-server](https://github.com/kubernetes-sigs/metrics-server) can be helpful, though in production environments you want to have statiscal overview, so you should be using something to collect and store performance metrics, most widely used solutions is `prometheus` with `grafana` for vizualization.
+Sometimes, you may encounter performance-related situations where a quick overview using [metrics-server](https://github.com/kubernetes-sigs/metrics-server) can be helpful. However, in production environments, it's essential to have a comprehensive statistical overview. For this purpose, the most widely used solution is `Prometheus` with `Grafana` for visualization.
 
 To install `metrics-server`
 ```bash
