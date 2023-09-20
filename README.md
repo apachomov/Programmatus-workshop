@@ -21,7 +21,7 @@ wget https://get.helm.sh/helm-v3.12.3-linux-amd64.tar.gz
 tar -zxvf helm-v3.12.3-linux-amd64.tar.gz
 mv linux-amd64/helm /usr/local/bin/helm
 ```
-# Disable firewall 
+Disable firewall 
 ```bash
 systemctl disable --now firewalld.service
 
@@ -138,7 +138,7 @@ kubectl create service nodeport my-nginx-app --tcp 80 --dry-run=client -o yaml
 ## SERVICE
 In Kubernetes, a `Service` is a method for exposing a network application that is running as one or more `Pods` in your cluster.
 - Unlike pods, a `Service` has a permanent IP and directs to `Pods`.
-- The lifecycles of `Pods` and `Services` are separate; even if a `pod` dies, the `Service` IP remains unchanged.
+- The lifecycles of `Pods` and `Services` are separate; even if a `Pod` dies, the `Service` IP remains unchanged.
 
 ### Service types:
 * ClusterIP: Used for internal communication within the cluster; this is the default type.
@@ -147,23 +147,23 @@ In Kubernetes, a `Service` is a method for exposing a network application that i
     * On cloud infrastructures, creating such objects usually involves creating cloud load balancers. Cloud-specific documentation should be consulted, like in this ([AWS Example](https://docs.aws.amazon.com/eks/latest/userguide/network-load-balancing.html)).
 * NodePort: Exposes a service on a specific port on nodes, enabling access via `<NodeIP>:<SpecifiedPort>`. Often used for testing but not for production use.
 
-### Example: Creating Service
-1. First, prepare to deploy two `pods`.
+### Example: Creating `Service`
+1. First, prepare to deploy two `Pods`.
 ```bash
 kubectl run svc-exmpl-pod01 --image nginx --dry-run=client -o yaml > pod.yaml
 echo "---" >> pod.yaml
 kubectl run svc-exmpl-pod02 --image nginx --dry-run=client -o yaml >> pod.yaml
 ```
-2. Modify the metadata of `pods` to have the same label, such as `example-service-01`.
+2. Modify the metadata of `Pods` to have the same label, such as `example-service-01`.
 ```bash
 vi pod.yaml
 ```
-3. Create `pods` and verify their information.
+3. Create `Pods` and verify their information.
 ```bash
 kubectl apply -f pod.yaml 
 kubectl get pods -o wide --show-labels
 ```
-4. Deploy a `service`.
+4. Deploy a `Service`.
 ```bash
 kubectl expose --help
 kubectl expose --port=80 --target-port=80 --name=example-service-01 pod svc-exmpl-pod01 --dry-run=client -o yaml > service.yaml
@@ -178,7 +178,7 @@ kubectl get endpoints
 kubectl describe endpoints example-service-01
 ```
 
-3. Test accessing the `service` via the `service` name.
+3. Test accessing the `Service` via the `Service` name.
 ```bash
 kubectl run --image nginx curler
 kubectl exec -it curler -- curl http://example-service-01
