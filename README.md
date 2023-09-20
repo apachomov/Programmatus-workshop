@@ -3,7 +3,7 @@
 Explore [Kubernetes basic architecture](https://kubernetes.io/docs/concepts/overview/components/).
 
 ## KUBERNETES INSTALLATION 
-General boostrap information is available [here](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/). There are more then one way to install `Kubernetes`, in this workshop we will use `kubeadm` method.
+General boostrap information is available [here](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/). There are more then one way to install Kubernetes, in this workshop we will use `kubeadm` method.
 1. Prepare your hosts with supported and up to date OS, and perform few more steps
 Set SELinux in permissive mode (effectively disabling it)
 ```bash
